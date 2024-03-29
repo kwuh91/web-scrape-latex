@@ -1,4 +1,4 @@
-import errno, os
+import errno, os, sys
 
 # Sadly, Python fails to provide the following magic number for us.
 ERROR_INVALID_NAME = 123
@@ -6,7 +6,7 @@ ERROR_INVALID_NAME = 123
 Windows-specific error code indicating an invalid pathname.
 
 See Also
-----------
+----------s
 https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
     Official listing of all such codes.
 '''

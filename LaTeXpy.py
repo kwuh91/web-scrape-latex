@@ -10,10 +10,9 @@ from validation import is_path_exists_or_creatable, \
 class LaTeX:
   
     # constructor
-    def __init__(self, settings: dict[str, str       | 
-                                           list[str] | 
-                                           list[dict[str, str | 
-                                                          list[str]]]] = None):
+    def __init__(self, settings: dict[str, str       |
+                                           list[str] |
+                                           dict[str, list[str]]] = None):
         # declare class fields
         self.__cleanup_required:  bool = True  # needed for atexit && __exit__ logic
         self.__isPackages:        bool = False # are there any packages ?      
@@ -26,8 +25,8 @@ class LaTeX:
         self.__file:              TextIO
         self.__docClassType:      str
         self.__docClassPars:      list[str]
-        self.__packages:          list[dict[str, str | 
-                                                 list[str]]]
+        self.__packages:          dict[str, list[str]]
+        
         self.__title:             str
         self.__author:            str
 
@@ -37,20 +36,14 @@ class LaTeX:
         if settings is None:
             settings = {
                 'fileName'     : 'myFile',
-                'filePath'     : 'default', # latex folder dir
+                'filePath'     : 'default', 
                 'fileMode'     : 'w',
                 'fileEncoding' : 'utf-8',
                 'docClassType' : 'article',
                 'docClassPars' : [''],
-                'packages'     : [
-                    {
-                        'packageName' : '',
-                        'packageArgs' : ['']
-                    },
-                    # ...
-                ],
-                'title'  : '', # no title
-                'author' : '', # no author
+                'packages'     : {},
+                'title'  : '', 
+                'author' : '', 
             }
 
         self.__fileNameExtension = '.tex'
@@ -85,9 +78,9 @@ class LaTeX:
         self.__fileEncoding = settings['fileEncoding']
 
         # open file
-        self.__file = open(file       = self.__filePath, 
-                           mode       = self.__fileMode, 
-                           encoding   = self.__fileEncoding)
+        self.__file = open(file     = self.__filePath, 
+                           mode     = self.__fileMode, 
+                           encoding = self.__fileEncoding)
         
         # initialize .tex doc
         textVar = f'\\documentclass'
@@ -118,12 +111,10 @@ class LaTeX:
         
         # import packages
         self.__packages = settings['packages']
-        package: dict[str, str | list[str]]
-        for package in self.__packages:     
+        packageName: str
+        packageArgs: list[str]
+        for packageName, packageArgs in self.__packages.items():     
             textVar = f'\\usepackage'
-
-            packageName: str       = package['packageName']
-            packageArgs: list[str] = package['packageArgs']
 
             packageNameIsEmpty: bool = not bool(packageName)
             packageArgsIsEmpty: bool = not any(bool(i) for i in packageArgs)
@@ -219,23 +210,19 @@ class LaTeX:
 
     # json document settings template
     docSettingsTemplate: str = \
-        "docSettings: dict[str, str       |                     \n" \
-        "                       list[str] |                     \n" \
-        "                       list[dict[str, str |            \n" \
-        "                                      list[str]]]] = { \n" \
-        "    'fileName'     : 'myFile',                         \n" \
-        "    'filePath'     : 'default', # latex folder dir     \n" \
-        "    'fileMode'     : 'w',                              \n" \
-        "    'fileEncoding' : 'utf-8',                          \n" \
-        "    'docClassType' : 'article',                        \n" \
-        "    'docClassPars' : [''],                             \n" \
-        "    'packages'     : [                                 \n" \
-        "        {                                              \n" \
-        "            'packageName' : '',                        \n" \
-        "            'packageArgs' : ['']                       \n" \
-        "        },                                             \n" \
-        "        # ...                                          \n" \
-        "    ],                                                 \n" \
-        "    'title'  : '', # no title                          \n" \
-        "    'author' : '', # no author                         \n" \
-        "}                                                      \n" \
+        "docSettings: dict[str, str       |                 \n" \
+        "                       list[str] |                 \n" \
+        "                       dict[str, list[str]]] = {   \n" \
+        "    'fileName'     : 'myFile',                     \n" \
+        "    'filePath'     : 'default', # latex folder dir \n" \
+        "    'fileMode'     : 'w',                          \n" \
+        "    'fileEncoding' : 'utf-8',                      \n" \
+        "    'docClassType' : 'article',                    \n" \
+        "    'docClassPars' : [''],                         \n" \
+        "    'packages'     : { # from : what               \n" \
+        "        'packageName' : ['packageArgs'],           \n" \
+        "        # ...                                      \n" \
+        "    },                                             \n" \
+        "    'title'  : '', # no title                      \n" \
+        "    'author' : '', # no author                     \n" \
+        "}                                                  \n" \
