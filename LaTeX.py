@@ -4,8 +4,8 @@ import atexit
 
 from validation import is_path_exists_or_creatable, \
                        is_path_exists_or_creatable_portable, \
-                       validFileModes, \
-                       validDocClasses
+                       VALID_FILE_MODES, \
+                       VALID_DOC_CLASSES
 
 class LaTeX:
   
@@ -69,7 +69,7 @@ class LaTeX:
         # validate file mode
         fileMode: str = settings['fileMode']
 
-        if fileMode in validFileModes:
+        if fileMode in VALID_FILE_MODES:
             self.__fileMode = fileMode
         else:
             raise Exception('invalid file mode')
@@ -101,7 +101,7 @@ class LaTeX:
         
         # validate document class type
         docClassType: str = settings['docClassType']
-        if docClassType in validDocClasses:
+        if docClassType in VALID_DOC_CLASSES:
             self.__docClassType = docClassType
         else:
             raise Exception('invalid document class type')
@@ -209,7 +209,7 @@ class LaTeX:
             self.__cleanup_required = False
 
     # json document settings template
-    docSettingsTemplate: str = \
+    DOC_SETTINGS_TEMPLATE: str = \
         "docSettings: dict[str, str       |                 \n" \
         "                       list[str] |                 \n" \
         "                       dict[str, list[str]]] = {   \n" \

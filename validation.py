@@ -150,5 +150,5 @@ def is_path_exists_or_creatable_portable(pathname: str) -> bool:
     except OSError:
         return False
 
-validFileModes:     list[str] = ['r', 'r+', 'w', 'w+', 'a', 'a+']
-validDocClasses:    list[str] = ['article', 'IEEEtran', 'proc', 'minimal', 'report', 'book', 'slides', 'memoir', 'letter', 'beamer']
+VALID_FILE_MODES:     list[str] = ['r', 'r+', 'w', 'w+', 'a', 'a+']
+VALID_DOC_CLASSES:    list[str] = ['article', 'IEEEtran', 'proc', 'minimal', 'report', 'book', 'slides', 'memoir', 'letter', 'beamer']
