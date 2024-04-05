@@ -89,102 +89,154 @@ class NomoScrape:
 
             self.__cleanup_required = False
 
-    def scrape(self, output: LaTeX):
-        # get page header <h4>
-        pageHeader: WebElement = self.__driver.find_element(By.CSS_SELECTOR, 
-                                                            NomoScrape.PAGE_HEADER_CSS_SELECTOR) 
-        pageHeaderText: str = pageHeader.text
-        output.writeSection(pageHeaderText, centered=True)
-        # print(f'page header: {pageHeaderText}')
+    def scrape(self, output: LaTeX) -> None:
 
-        # get page blocks: Теорема и ее связи, Замечания, Доказательство...
-        # <div data-name='presentation-slide'>
-        pageBlocks: list[WebElement] = self.__driver.find_elements(By.CSS_SELECTOR, 
-                                                                   NomoScrape.PAGE_BLOCKS_DIV_CSS_SELECTOR) 
+        # # # # # # # # # # # # # # # # # # # # # #
+        # <a>                                     #
+        # <span data-content-type='text'>         # 
+        # <script type='math/tex'>                #
+        # <script type='math/tex; mode=display'>  #
+        # # # # # # # # # # # # # # # # # # # # # #
 
-        # iterate through <div data-name='presentation-slide'>
-        pageBlock: WebElement
-        for pageBlock in pageBlocks: 
-            # get current page block header <h5>
-            pageBlockHeader: WebElement
-            pageBlockHeader = pageBlock.find_element(By.CSS_SELECTOR, 
-                                                     NomoScrape.PAGE_BLOCK_HEADER_CSS_SELECTOR)
-            pageBlockHeaderText: str = pageBlockHeader.text
-            if pageBlockHeaderText != 'Математические примеры и задачи':
-                output.writeSubSection(pageBlockHeaderText)
-                # print(f'header: {pageBlockHeaderText}')
+        page_elements_css_selector: str = "h4,"                             \
+                                          "h5,"                             \
+                                          "a,"                              \
+                                          "span[data-content-type='text']," \
+                                          "script[type='math/tex'],"        \
+                                          "script[type='math/tex; mode=display']"
+
+        pageElements: list[WebElement]
+        pageElements = self.__driver.find_elements(By.CSS_SELECTOR, 
+                                                   page_elements_css_selector)
             
-            # get current page block content <span class='phrase'>
-            pageBlockContents: list[WebElement] 
-            pageBlockContents = pageBlock.find_elements(By.CSS_SELECTOR, 
-                                                        NomoScrape.PAGE_BLOCK_CONTENT_CSS_SELECTOR) 
+        scriptInstructionsDict = {
+            'math/tex'              : lambda element: output.writeFormula(element.get_attribute('innerHTML'), display=False),
+            'math/tex; mode=display': lambda element: output.writeFormula(element.get_attribute('innerHTML'), display=True)
+        }
+
+        instructionsDict = {
+            'h4'    : lambda element: output.writeSection(element.text, centered=True),
+            'h5'    : lambda element: output.writeSubSection(element.text),
+            'a'     : lambda element: output.write(element.text),
+            'span'  : lambda element: output.write(element.text),
+            'script': lambda element: scriptInstructionsDict[element.get_attribute('type')](element)
+        }
+
+        # find first occurrence of h4 
+        firstH4Occurrence: int
+        webEl: WebElement
+        for index, webEl in enumerate(pageElements):
+            if webEl.tag_name == 'h4':
+                firstH4Occurrence = index
+                break
+
+        # iterate through all the pageElements 
+        for i in range(firstH4Occurrence, len(pageElements)):
+            pageElement:    WebElement = pageElements[i]
+            currentTagName: str        = pageElement.tag_name 
+
+            if currentTagName   == 'h5' and \
+               pageElement.text == 'Математические примеры и задачи':
+                break
+
+            instructionsDict[currentTagName](pageElement)
+
+    # def scrape(self, output: LaTeX) -> None:
+    #     # get page header <h4>
+    #     pageHeader: WebElement = self.__driver.find_element(By.CSS_SELECTOR, 
+    #                                                         NomoScrape.PAGE_HEADER_CSS_SELECTOR) 
+    #     pageHeaderText: str = pageHeader.text
+    #     output.writeSection(pageHeaderText, centered=True)
+    #     # print(f'page header: {pageHeaderText}')
+
+    #     # get page blocks: Теорема и ее связи, Замечания, Доказательство...
+    #     # <div data-name='presentation-slide'>
+    #     pageBlocks: list[WebElement] = self.__driver.find_elements(By.CSS_SELECTOR, 
+    #                                                                NomoScrape.PAGE_BLOCKS_DIV_CSS_SELECTOR) 
+
+    #     # iterate through <div data-name='presentation-slide'>
+    #     pageBlock: WebElement
+    #     for pageBlock in pageBlocks: 
+    #         # get current page block header <h5>
+    #         pageBlockHeader: WebElement
+    #         pageBlockHeader = pageBlock.find_element(By.CSS_SELECTOR, 
+    #                                                  NomoScrape.PAGE_BLOCK_HEADER_CSS_SELECTOR)
+    #         pageBlockHeaderText: str = pageBlockHeader.text
+    #         if pageBlockHeaderText != 'Математические примеры и задачи':
+    #             output.writeSubSection(pageBlockHeaderText)
+    #             # print(f'header: {pageBlockHeaderText}')
             
-            # iterate through <span class='phrase'>
-            pageBlockContent: WebElement
-            for pageBlockContent in pageBlockContents: 
+    #         # get current page block content <span class='phrase'>
+    #         pageBlockContents: list[WebElement] 
+    #         pageBlockContents = pageBlock.find_elements(By.CSS_SELECTOR, 
+    #                                                     NomoScrape.PAGE_BLOCK_CONTENT_CSS_SELECTOR) 
+            
+    #         # iterate through <span class='phrase'>
+    #         pageBlockContent: WebElement
+    #         for pageBlockContent in pageBlockContents: 
                 
-                '''
-                <a>    -> get text
-                <span> -> get type ->  <span data-content-type='text'>    -> get text
-                                       <span data-content-type='formula'> -> find script element -> <script type='math/tex'>               -> get text
-                                                                             && get its type        <script type='math/tex; mode=display'> -> get text
-                '''
+    #             '''
+    #             <a>    -> get text
+    #             <span> -> get type ->  <span data-content-type='text'>    -> get text
+    #                                    <span data-content-type='formula'> -> find script element -> <script type='math/tex'>               -> get text
+    #                                                                          && get its type        <script type='math/tex; mode=display'> -> get text
+    #             '''
 
-                # get current page block content children (<span> or <a>)
-                child_elements_xpath: str = "./*[self::span or self::a]"
-                pageBlockContentChildren: list[WebElement] 
-                pageBlockContentChildren = pageBlockContent.find_elements(By.XPATH, 
-                                                                          child_elements_xpath)
+    #             # get current page block content children (<span> or <a>)
+    #             child_elements_xpath: str = "./*[self::span or self::a]"
+    #             pageBlockContentChildren: list[WebElement] 
+    #             pageBlockContentChildren = pageBlockContent.find_elements(By.XPATH, 
+    #                                                                       child_elements_xpath)
                                                                           
-                # iterate through (<span> or <a>)
-                pageBlockContentChild: WebElement
-                for pageBlockContentChild in pageBlockContentChildren: 
-                    currPageBlockContentChildTag = pageBlockContentChild.tag_name # (<span> or <a>)
+    #             # iterate through (<span> or <a>)
+    #             pageBlockContentChild: WebElement
+    #             for pageBlockContentChild in pageBlockContentChildren: 
+    #                 currPageBlockContentChildTag = pageBlockContentChild.tag_name # (<span> or <a>)
 
-                    if currPageBlockContentChildTag == 'a':
-                        pageBlockContentChildLink: str = pageBlockContentChild.text # get <a> text
-                        output.write(pageBlockContentChildLink)
-                        # print(f'link: {pageBlockContentChildLink}') 
+    #                 if currPageBlockContentChildTag == 'a':
+    #                     pageBlockContentChildLink: str = pageBlockContentChild.text # get <a> text
+    #                     output.write(pageBlockContentChildLink)
+    #                     # print(f'link: {pageBlockContentChildLink}') 
 
-                    elif currPageBlockContentChildTag == 'span':
-                        currSpanDataContentType: str = pageBlockContentChild.get_attribute('data-content-type') # <span data-content-type='formula'> or
-                                                                                                                # <span data-content-type='text'>
-                        if currSpanDataContentType == 'text': # <span data-content-type='text'>
-                            pageBlockContentChildText: str = pageBlockContentChild.text # get <span data-content-type='text'> text
-                            output.write(pageBlockContentChildText)
-                            # print(f'text: {pageBlockContentChildText}') 
+    #                 elif currPageBlockContentChildTag == 'span':
+    #                     currSpanDataContentType: str = pageBlockContentChild.get_attribute('data-content-type') # <span data-content-type='formula'> or
+    #                                                                                                             # <span data-content-type='text'>
+    #                     if currSpanDataContentType == 'text': # <span data-content-type='text'>
+    #                         pageBlockContentChildText: str = pageBlockContentChild.text # get <span data-content-type='text'> text
+    #                         output.write(pageBlockContentChildText)
+    #                         # print(f'text: {pageBlockContentChildText}') 
 
-                        elif currSpanDataContentType == 'formula': # <span data-content-type='formula'>
-                            currFormula: WebElement = pageBlockContentChild.find_element(By.CSS_SELECTOR, 
-                                                                                         'script')
+    #                     elif currSpanDataContentType == 'formula': # <span data-content-type='formula'>
+    #                         currFormula: WebElement = pageBlockContentChild.find_element(By.CSS_SELECTOR, 
+    #                                                                                      'script')
 
-                            currFormulaType: str = currFormula.get_attribute('type') # <script type='math/tex'> or
-                                                                                     # <script type='math/tex; mode=display'>
-                            if currFormulaType == 'math/tex': # <script type='math/tex'>
-                                currFormulaText: str = currFormula.get_attribute("innerHTML") # get <script type='math/tex'> text
-                                output.writeFormula(currFormulaText, display=False)
-                                # print(f'formula(in text): {currFormulaText}') 
+    #                         currFormulaType: str = currFormula.get_attribute('type') # <script type='math/tex'> or
+    #                                                                                  # <script type='math/tex; mode=display'>
+    #                         if currFormulaType == 'math/tex': # <script type='math/tex'>
+    #                             currFormulaText: str = currFormula.get_attribute("innerHTML") # get <script type='math/tex'> text
+    #                             output.writeFormula(currFormulaText, display=False)
+    #                             # print(f'formula(in text): {currFormulaText}') 
 
-                            elif currFormulaType == 'math/tex; mode=display': # <script type='math/tex; mode=display'>
-                                currFormulaText: str = currFormula.get_attribute("innerHTML") # get <script type='math/tex; mode=display'> text
-                                output.writeFormula(currFormulaText, display=True)
-                                # print(f'formula(display): {currFormulaText}')
+    #                         elif currFormulaType == 'math/tex; mode=display': # <script type='math/tex; mode=display'>
+    #                             currFormulaText: str = currFormula.get_attribute("innerHTML") # get <script type='math/tex; mode=display'> text
+    #                             output.writeFormula(currFormulaText, display=True)
+    #                             # print(f'formula(display): {currFormulaText}')
 
-                            else:
-                                raise Exception(f'MET UNEXPECTED FORMULA-TYPE: {currFormulaType}')
+    #                         else:
+    #                             raise Exception(f'MET UNEXPECTED FORMULA-TYPE: {currFormulaType}')
                         
-                        else:
-                            raise Exception(f'MET UNEXPECTED DATA-CONTENT-TYPE: {currSpanDataContentType}')
+    #                     else:
+    #                         raise Exception(f'MET UNEXPECTED DATA-CONTENT-TYPE: {currSpanDataContentType}')
 
-                    else:
-                        raise Exception(f'MET UNEXPECTED TAG: {currPageBlockContentChildTag}')
+    #                 else:
+    #                     raise Exception(f'MET UNEXPECTED TAG: {currPageBlockContentChildTag}')
                     
     # instructions for selenium to access data
     SUBMIT_LOGIN_BUTTON_CSS_SELECTOR: str = 'button[type="submit"]'
-    PAGE_BLOCKS_DIV_CSS_SELECTOR:     str = 'div[data-name="presentation-slide"]'
-    PAGE_HEADER_CSS_SELECTOR:         str = 'h4'
-    PAGE_BLOCK_HEADER_CSS_SELECTOR:   str = 'h5'
-    PAGE_BLOCK_CONTENT_CSS_SELECTOR:  str = 'span[class="phrase"]'
+    # PAGE_BLOCKS_DIV_CSS_SELECTOR:     str = 'div[data-name="presentation-slide"]'
+    # PAGE_HEADER_CSS_SELECTOR:         str = 'h4'
+    # PAGE_BLOCK_HEADER_CSS_SELECTOR:   str = 'h5'
+    # PAGE_BLOCK_CONTENT_CSS_SELECTOR:  str = 'span[class="phrase"]'
 
     # json document settings template
     NOMO_SETTINGS_TEMPLATE: str = \
