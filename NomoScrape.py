@@ -89,7 +89,7 @@ class NomoScrape:
 
             self.__cleanup_required = False
 
-    def scrape(self, output: LaTeX):
+    def scrape(self, output: LaTeX) -> None:
         # get page header <h4>
         pageHeader: WebElement = self.__driver.find_element(By.CSS_SELECTOR, 
                                                             NomoScrape.PAGE_HEADER_CSS_SELECTOR) 
