@@ -1,14 +1,6 @@
 from LaTeX import LaTeX
 from NomoScrape import NomoScrape
 
-from selenium import webdriver
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
-import time
-
 # settings JSON for LaTeX
 docSettings: dict[str, str       |
                        list[str] |
@@ -25,8 +17,8 @@ docSettings: dict[str, str       |
         'geometry'  : ['top=26mm', 'bottom=20mm', 'left=20mm', 'right=20mm'],
         # ...
     },
-    'title'  : 'title', # no title
-    'author' : 'author', # no author
+    'title'  : '', # no title
+    'author' : '', # no author
 }
 
 # settings JSON for NomoScrape
@@ -40,7 +32,7 @@ if __name__ == '__main__':
     # print(LaTeX.DOC_SETTINGS_TEMPLATE)
     # print(NomoScrape.NOMO_SETTINGS_TEMPLATE)
 
-    # doc = LaTeX(docSettings)
-    scrape = NomoScrape(nomoSettings)
+    doc:  LaTeX      = LaTeX(docSettings)
+    nomo: NomoScrape = NomoScrape(nomoSettings)
     
-    scrape.testing()
+    nomo.scrape(output=doc)

@@ -5,11 +5,11 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.remote.webelement import WebElement
+
+from LaTeX import LaTeX
 
 import time
-
-# from typing import TextIO
-# import os
 import atexit
 
 class NomoScrape:
@@ -89,55 +89,102 @@ class NomoScrape:
 
             self.__cleanup_required = False
 
-    def testing(self):
+    def scrape(self, output: LaTeX):
+        # get page header <h4>
+        pageHeader: WebElement = self.__driver.find_element(By.CSS_SELECTOR, 
+                                                            NomoScrape.PAGE_HEADER_CSS_SELECTOR) 
+        pageHeaderText: str = pageHeader.text
+        output.writeSection(pageHeaderText, centered=True)
+        # print(f'page header: {pageHeaderText}')
 
-        time.sleep(10)
+        # get page blocks: Теорема и ее связи, Замечания, Доказательство...
+        # <div data-name='presentation-slide'>
+        pageBlocks: list[WebElement] = self.__driver.find_elements(By.CSS_SELECTOR, 
+                                                                   NomoScrape.PAGE_BLOCKS_DIV_CSS_SELECTOR) 
 
-        pageStructure = self.__driver.find_elements(By.XPATH, NomoScrape.PAGE_STRUCTURE_DIV_XPATH)
-        pageHeader    = self.__driver.find_elements(By.XPATH, NomoScrape.PAGE_HEADER_XPATH)
-        trafficLight  = self.__driver.find_elements(By.XPATH, NomoScrape.TRAFFIC_LIGHT_XPATH)
-        remarks       = self.__driver.find_elements(By.XPATH, NomoScrape.REMARKS_XPATH)
-        proofs        = self.__driver.find_elements(By.XPATH, NomoScrape.PROOFS_XPATH)
+        # iterate through <div data-name='presentation-slide'>
+        pageBlock: WebElement
+        for pageBlock in pageBlocks: 
+            # get current page block header <h5>
+            pageBlockHeader: WebElement
+            pageBlockHeader = pageBlock.find_element(By.CSS_SELECTOR, 
+                                                     NomoScrape.PAGE_BLOCK_HEADER_CSS_SELECTOR)
+            pageBlockHeaderText: str = pageBlockHeader.text
+            if pageBlockHeaderText != 'Математические примеры и задачи':
+                output.writeSubSection(pageBlockHeaderText)
+                # print(f'header: {pageBlockHeaderText}')
+            
+            # get current page block content <span class='phrase'>
+            pageBlockContents: list[WebElement] 
+            pageBlockContents = pageBlock.find_elements(By.CSS_SELECTOR, 
+                                                        NomoScrape.PAGE_BLOCK_CONTENT_CSS_SELECTOR) 
+            
+            # iterate through <span class='phrase'>
+            pageBlockContent: WebElement
+            for pageBlockContent in pageBlockContents: 
+                
+                '''
+                <a>    -> get text
+                <span> -> get type ->  <span data-content-type='text'>    -> get text
+                                       <span data-content-type='formula'> -> find script element -> <script type='math/tex'>               -> get text
+                                                                             && get its type        <script type='math/tex; mode=display'> -> get text
+                '''
 
-        mathJax  = self.__driver.find_elements(By.CSS_SELECTOR, NomoScrape.MATH_JAX_TEX_SCRIPT_CSS_SELECTOR)
-        mathJax2 = self.__driver.find_elements(By.CSS_SELECTOR, NomoScrape.MATH_JAX_TEX_SCRIPT_2_CSS_SELECTOR)
+                # get current page block content children (<span> or <a>)
+                child_elements_xpath: str = "./*[self::span or self::a]"
+                pageBlockContentChildren: list[WebElement] 
+                pageBlockContentChildren = pageBlockContent.find_elements(By.XPATH, 
+                                                                          child_elements_xpath)
+                                                                          
+                # iterate through (<span> or <a>)
+                pageBlockContentChild: WebElement
+                for pageBlockContentChild in pageBlockContentChildren: 
+                    currPageBlockContentChildTag = pageBlockContentChild.tag_name # (<span> or <a>)
 
-        mainText = self.__driver.find_elements(By.CSS_SELECTOR, NomoScrape.MAIN_TEXT_CSS_SELECTOR)
+                    if currPageBlockContentChildTag == 'a':
+                        pageBlockContentChildLink: str = pageBlockContentChild.text # get <a> text
+                        output.write(pageBlockContentChildLink)
+                        # print(f'link: {pageBlockContentChildLink}') 
 
-        print(f'pageStructure = {pageStructure}', end='\n\n')
-        print(f'pageHeader = {pageHeader}',       end='\n\n')
-        print(f'trafficLight = {trafficLight}',   end='\n\n')
-        print(f'remarks = {remarks}',             end='\n\n')
-        print(f'proofs = {proofs}',               end='\n\n')
-        print(f'mathJax = {mathJax}',             end='\n\n')
-        print(f'mainText = {mainText}',           end='\n\n')
+                    elif currPageBlockContentChildTag == 'span':
+                        currSpanDataContentType: str = pageBlockContentChild.get_attribute('data-content-type') # <span data-content-type='formula'> or
+                                                                                                                # <span data-content-type='text'>
+                        if currSpanDataContentType == 'text': # <span data-content-type='text'>
+                            pageBlockContentChildText: str = pageBlockContentChild.text # get <span data-content-type='text'> text
+                            output.write(pageBlockContentChildText)
+                            # print(f'text: {pageBlockContentChildText}') 
 
-        # for element in proofs:
-        #     print(element.text)
+                        elif currSpanDataContentType == 'formula': # <span data-content-type='formula'>
+                            currFormula: WebElement = pageBlockContentChild.find_element(By.CSS_SELECTOR, 
+                                                                                         'script')
 
-        print()
+                            currFormulaType: str = currFormula.get_attribute('type') # <script type='math/tex'> or
+                                                                                     # <script type='math/tex; mode=display'>
+                            if currFormulaType == 'math/tex': # <script type='math/tex'>
+                                currFormulaText: str = currFormula.get_attribute("innerHTML") # get <script type='math/tex'> text
+                                output.writeFormula(currFormulaText, display=False)
+                                # print(f'formula(in text): {currFormulaText}') 
 
-        # TODO: go by phrase_roots in each block and act depending on data-content-type (text\formula links aswell) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # formulas can also either have type="math/tex; mode=display" or just type="math/tex"                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # REMEMBER TO CHECK XPATH                                                                                   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                            elif currFormulaType == 'math/tex; mode=display': # <script type='math/tex; mode=display'>
+                                currFormulaText: str = currFormula.get_attribute("innerHTML") # get <script type='math/tex; mode=display'> text
+                                output.writeFormula(currFormulaText, display=True)
+                                # print(f'formula(display): {currFormulaText}')
 
-        for element in proofs:
-            print(element.get_attribute('innerHTML'))
+                            else:
+                                raise Exception(f'MET UNEXPECTED FORMULA-TYPE: {currFormulaType}')
+                        
+                        else:
+                            raise Exception(f'MET UNEXPECTED DATA-CONTENT-TYPE: {currSpanDataContentType}')
 
+                    else:
+                        raise Exception(f'MET UNEXPECTED TAG: {currPageBlockContentChildTag}')
+                    
     # instructions for selenium to access data
     SUBMIT_LOGIN_BUTTON_CSS_SELECTOR: str = 'button[type="submit"]'
-    PAGE_STRUCTURE_DIV_XPATH:         str = '/html/body/div[2]/div/div[2]/div/div[1]/div/div[1]'
-    PAGE_HEADER_XPATH:                str = '/html/body/div[2]/div/div[2]/div/div[1]/div/div[1]/div[1]/h4'
-    TRAFFIC_LIGHT_XPATH:              str = '/html/body/div[2]/div/div[2]/div/div[1]/div/div[1]/div[1]/div/div[1]/div'
-    REMARKS_XPATH:                    str = '/html/body/div[2]/div/div[2]/div/div[1]/div/div[1]/div[2]/div/div'
-    PROOFS_XPATH:                     str = '/html/body/div[2]/div/div[2]/div/div[1]/div/div[1]/div[3]/div/div'
-
-    MATH_EXAMPLES_XPATH:              str = '/html/body/div[2]/div/div[2]/div/div[1]/div/div[1]/div[4]/div/div'
-
-    MATH_JAX_TEX_SCRIPT_CSS_SELECTOR:   str = 'script[type="math/tex"]'               # in text
-    MATH_JAX_TEX_SCRIPT_2_CSS_SELECTOR: str = 'script[type="math/tex; mode=display"]' # center-aligned
-
-    MAIN_TEXT_CSS_SELECTOR:           str = 'div[class="phrase__root"]'
+    PAGE_BLOCKS_DIV_CSS_SELECTOR:     str = 'div[data-name="presentation-slide"]'
+    PAGE_HEADER_CSS_SELECTOR:         str = 'h4'
+    PAGE_BLOCK_HEADER_CSS_SELECTOR:   str = 'h5'
+    PAGE_BLOCK_CONTENT_CSS_SELECTOR:  str = 'span[class="phrase"]'
 
     # json document settings template
     NOMO_SETTINGS_TEMPLATE: str = \

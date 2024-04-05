@@ -16,6 +16,7 @@ class LaTeX:
         # declare class fields
         self.__cleanup_required:  bool = True  # needed for atexit && __exit__ logic
         self.__isPackages:        bool = False # are there any packages ?      
+        self.__islastCharacterNL: bool = False
 
         self.__fileNameExtension: str 
         self.__fileName:          str 
@@ -166,10 +167,18 @@ class LaTeX:
             textVar = f'\\author{{{self.__author}}}'
             self.__file.write(textVar + '\n')
 
-        # finish up
         if self.__title:
             self.__file.write(f'\n')
 
+        textVar = f'\\newcommand{{\\lt}}{{\\ensuremath <}}'
+        self.__file.write(textVar + '\n')
+        textVar = f'\\newcommand{{\\gt}}{{\\ensuremath >}}'
+        self.__file.write(textVar + '\n')
+
+        self.__file.write(f'\n')
+
+        # finish up
+        if self.__title:
             textVar = f'\\begin{{document}}'
             self.__file.write(textVar + '\n')
 
@@ -180,7 +189,7 @@ class LaTeX:
             textVar = f'\\begin{{document}}'
             self.__file.write(textVar + '\n')
 
-        self.__file.write(f'\n')
+        self.__islastCharacterNL = True
 
         atexit.register(self.__cleanup)
 
@@ -196,17 +205,71 @@ class LaTeX:
     def __exit__(self, exc_type, exc_value, traceback):
         self.__cleanup
 
-    def __cleanup(self):
+    def __cleanup(self) -> None:
         textVar: str
         if self.__cleanup_required:
             # ... cleanup logic
 
             textVar = f'\\end{{document}}'
+            textVar = '\n' + textVar if self.__islastCharacterNL else '\n\n' + textVar
             self.__file.write(textVar + '\n')
 
             self.__file.close()
 
-            self.__cleanup_required = False
+            self.__islastCharacterNL = True
+            self.__cleanup_required  = False
+
+    # decorator which adapts string for latex
+    def __prepareText(func):
+        def __wrapper(self, text: str, *args, **kwargs) -> None:
+            text = text.replace('∪', '\\cup ')
+            text = text.replace('∑', '\\sum')
+            text = text.replace('…', '\\ldots ')
+
+            return func(self, text, *args, **kwargs)
+        return __wrapper
+
+    @__prepareText
+    def writeSection(self, text: str, centered=True) -> None:
+        textVar: str
+
+        textVar = f'\\section*{{\\centerline{{{text}}}}}' if centered else f'\\section*{{{text}}}'
+        self.__file.write('\n' + textVar + '\n')
+        self.__islastCharacterNL = True
+
+    @__prepareText
+    def writeSubSection(self, text: str) -> None:
+        textVar: str
+
+        textVar = f'\\subsection*{{{text}}}'
+        self.__file.write('\n' + textVar + '\n\n')
+        self.__islastCharacterNL = True
+
+    @__prepareText
+    def write(self, text: str) -> None:
+        self.__file.write(text + ' ')
+        self.__islastCharacterNL = False
+
+    @__prepareText
+    def writeFormula(self, text: str, display=False) -> None:
+        textVar: str
+
+        if display:
+            textVar = '' if self.__islastCharacterNL else '\n'
+
+            textVar += f'\\begin{{gather*}}\n'
+            textVar += f'{text}\n'
+            textVar += f'\\end{{gather*}}'
+
+            textVar += '\n'
+            self.__islastCharacterNL = True
+        else:
+            textVar = f'${text}$'
+
+            textVar += ' '
+            self.__islastCharacterNL = False
+
+        self.__file.write(textVar)
 
     # json document settings template
     DOC_SETTINGS_TEMPLATE: str = \

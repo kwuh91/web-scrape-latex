@@ -15,4 +15,10 @@
 /latex/myFile.log
 /latex/myFile.synctex.gz
 
+/latex/nomo.aux
+/latex/nomo.fdb_latexmk
+/latex/nomo.fls
+/latex/nomo.log
+/latex/nomo.synctex.gz
+
 /test.py

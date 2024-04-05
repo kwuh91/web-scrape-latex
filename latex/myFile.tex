@@ -5,11 +5,53 @@
 \usepackage{amsmath}
 \usepackage[top=26mm, bottom=20mm, left=20mm, right=20mm]{geometry}
 
-% Document metadata
-\title{title}
-\author{author}
+\newcommand{\lt}{\ensuremath <}
+\newcommand{\gt}{\ensuremath >}
 
 \begin{document}
-\maketitle
+
+\section*{\centerline{Теорема сложения (Т)}}
+
+\subsection*{Теорема и ее связи}
+
+Рассмотрим два множества $A$ и $B.$ Если множество $A$ содержит $n(A)$ элементов, а множество $B$ — $n(B)$ элементов и пересечение множеств $A$ и $B$ не пусто, то число элементов в их объединении $n(A \cup B)$ вычисляется по формуле: 
+\begin{gather*}
+n(A\cup B) = n(A)+n(B) - n(A\cap B).
+\end{gather*}
+
+\subsection*{Замечания}
+
+Следствие:
+\begin{gather*}
+n(A\cup B\cup C)= \\ =n(A)+n(B)+n(C) - n(A\cap B)-n(A\cap C)-n(B\cap C) +n(A\cap B\cap C).
+\end{gather*}
+Если речь идет о мощности объединения произвольного числа множеств, то по индукции легко доказывается формула «включений-исключений»: 
+\begin{gather*}
+n(A_1\cup A_2\cup \ldots \cup A_m)=\\
+=\sum_{i=1}^m n(A_i ) - \sum_{i\lt j}   n(A_i A_j )+\sum_{i\lt j\lt k} n(A_i A_j A_k ) -\ldots +(-1)^m n(A_1 A_2\ldots A_m)
+\end{gather*}
+
+\subsection*{Доказательство}
+
+Множество $A\cup B$ и множество $B$ можно представить как объединение двух непересекающихся множеств: 
+\begin{gather*}
+A\cup B=A\cup (\overline{A} \cap B), B=(A\cap B)\cup(\overline{A} \cap B).
+\end{gather*}
+Тогда по правилу суммы имеем: 
+\begin{gather*}
+n(A\cup B)=n(A)+n(\overline{A} \cap B)                 \;\;\;\;\;              (1)
+\end{gather*}
+\begin{gather*}
+n(B)=n(A\cap B)+n(\overline{A} \cap B)                 \;\;\;\;\;             (2)
+\end{gather*}
+Вычитая из выражения $(1)$ выражение $(2)$ , получаем: 
+\begin{gather*}
+n(A\cup B)-n(B)=n(A)+n(\overline{A} \cap B) - n(A\cup B) -  n(\overline{A} \cap B)=n(A)- n(A\cup B)
+\end{gather*}
+Окончательно имеем: 
+\begin{gather*}
+n(A\cup B)=n(A)+n(B) - n(A\cap B),
+\end{gather*}
+что и требовалось доказать. 
 
 \end{document}
